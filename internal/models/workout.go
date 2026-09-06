@@ -12,8 +12,8 @@ type Exercise struct {
 	Sets []Set  `json:"sets"`
 }
 
-type Session struct {
-	SessionID int        `json:"session_id"`
+type Workout struct {
+	WorkoutID int        `json:"workout_id"`
 	Date      time.Time  `json:"date"`
 	Exercises []Exercise `json:"exercises"`
 }
