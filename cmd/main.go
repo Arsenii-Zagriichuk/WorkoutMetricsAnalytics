@@ -12,6 +12,7 @@ func main() {
 	db := store.NewStorage()
 	workoutHandler := &handlers.WorkoutHandler{Store: db}
 	r.POST("/users/:id/workouts", workoutHandler.SaveWorkout)
+	r.GET("/users/:id/workouts/volume", workoutHandler.GetVolume)
 	err := r.Run(":8080")
 	if err != nil {
 		return
