@@ -17,3 +17,9 @@ type Workout struct {
 	Date      time.Time  `json:"date"`
 	Exercises []Exercise `json:"exercises"`
 }
+
+type PR struct {
+	OneRepMax float64
+	Weight    float64
+	Volume    float64
+}
