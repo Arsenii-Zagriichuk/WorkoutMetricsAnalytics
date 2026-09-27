@@ -62,3 +62,23 @@ func (h *WorkoutHandler) GetVolume(c *gin.Context) {
 	c.JSON(http.StatusOK, volumeStats)
 
 }
+
+func (h *WorkoutHandler) GetExercisePrs(c *gin.Context) {
+	userID := store.UserID(c.Param("id"))
+
+	exercise := c.Query("exercise")
+	if exercise == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "exercise is required"})
+		return
+	}
+
+	workouts := h.Store.GetWorkouts(userID)
+	if len(workouts) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no workouts found for user"})
+		return
+	}
+
+	PrStats := services.CalculateExercisePRs(exercise, workouts)
+
+	c.JSON(http.StatusOK, PrStats)
+}
