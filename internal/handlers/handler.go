@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"WorkoutMetricsAnalytics/internal/middleware"
 	"WorkoutMetricsAnalytics/internal/models"
 	"WorkoutMetricsAnalytics/internal/services"
 	"WorkoutMetricsAnalytics/internal/store"
@@ -16,13 +17,7 @@ type WorkoutHandler struct {
 // SaveWorkout is handler function for the POST request.
 // The main goal of this method is to bind the data received from the client with the workout object.
 func (h *WorkoutHandler) SaveWorkout(c *gin.Context) {
-	receivedUserID := c.Param("id")
-	if receivedUserID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "user id is required"})
-		return
-	}
-
-	userID := store.UserID(receivedUserID)
+	userID := store.UserID(middleware.UserID(c))
 
 	var workout models.Workout
 
@@ -43,7 +38,7 @@ func (h *WorkoutHandler) SaveWorkout(c *gin.Context) {
 
 // GetVolume - a handler for the get request to get the volume from the calculator method
 func (h *WorkoutHandler) GetVolume(c *gin.Context) {
-	userID := store.UserID(c.Param("id"))
+	userID := store.UserID(middleware.UserID(c))
 
 	exercise := c.Query("exercise")
 	if exercise == "" {
@@ -64,7 +59,7 @@ func (h *WorkoutHandler) GetVolume(c *gin.Context) {
 }
 
 func (h *WorkoutHandler) GetExercisePrs(c *gin.Context) {
-	userID := store.UserID(c.Param("id"))
+	userID := store.UserID(middleware.UserID(c))
 
 	exercise := c.Query("exercise")
 	if exercise == "" {
