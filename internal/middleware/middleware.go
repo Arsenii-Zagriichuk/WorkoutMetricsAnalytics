@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	userIDKey = "userID"
+	userIDKey   = "userID"
+	TokenIssuer = "workout-metrics-analytics"
 )
 
 // RequireAuth verifies the Bearer token and stores the caller's user id in the context.
@@ -53,7 +54,7 @@ func VerifyToken(tokenString string, secret []byte) (string, error) {
 		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
 		jwt.WithExpirationRequired(),
 		jwt.WithLeeway(30*time.Second),
-		jwt.WithIssuer("workout-metrics-analytics"),
+		jwt.WithIssuer(TokenIssuer),
 	)
 	if err != nil {
 		return "", err

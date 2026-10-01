@@ -8,7 +8,6 @@ import (
 )
 
 var testSecret = []byte("test-secret-that-is-at-least-32-bytes!")
-var TokenIssuer = "workout-metrics-analytics"
 
 // signToken creates a signed token so each case can change one thing.
 func signToken(t *testing.T, method jwt.SigningMethod, secret []byte, claims jwt.RegisteredClaims) string {
