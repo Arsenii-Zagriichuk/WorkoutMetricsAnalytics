@@ -3,7 +3,7 @@ name: actions
 on:
   pull_request:
     branches:
-      - main
+      - master
 
 jobs:
   test:
