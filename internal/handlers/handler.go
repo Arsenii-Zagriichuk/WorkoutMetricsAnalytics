@@ -46,16 +46,13 @@ func (h *WorkoutHandler) GetVolume(c *gin.Context) {
 		return
 	}
 
-	workouts := h.Store.GetWorkouts(userID)
-	if len(workouts) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "no workouts found for user"})
+	volumeStats := services.CalculateWeeklyVolume(exercise, h.Store.GetWorkouts(userID))
+	if len(volumeStats) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no workouts found for this exercise"})
 		return
 	}
 
-	volumeStats := services.CalculateWeeklyVolume(exercise, workouts)
-
 	c.JSON(http.StatusOK, volumeStats)
-
 }
 
 func (h *WorkoutHandler) GetExercisePrs(c *gin.Context) {
@@ -67,13 +64,11 @@ func (h *WorkoutHandler) GetExercisePrs(c *gin.Context) {
 		return
 	}
 
-	workouts := h.Store.GetWorkouts(userID)
-	if len(workouts) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "no workouts found for user"})
+	prStats, found := services.CalculateExercisePRs(exercise, h.Store.GetWorkouts(userID))
+	if !found {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no workouts found for this exercise"})
 		return
 	}
 
-	PrStats := services.CalculateExercisePRs(exercise, workouts)
-
-	c.JSON(http.StatusOK, PrStats)
+	c.JSON(http.StatusOK, prStats)
 }

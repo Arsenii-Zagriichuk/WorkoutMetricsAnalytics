@@ -99,3 +99,40 @@ func TestSaveWorkoutRejectsInvalidWorkouts(t *testing.T) {
 		t.Fatalf("after only invalid saves: status %d, want 404; body %s", rec.Code, rec.Body)
 	}
 }
+
+func TestGetExercisePRsResponse(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := newRouter(store.NewStorage(), testSecret)
+	token := tokenFor(t, "user-a")
+
+	// The PRs come from different sets: the single gives the one-rep max and the heaviest
+	// weight, the set of 5 the volume. The single counts as is, so the one-rep max is 100,
+	// not Epley's 103.3, and 5 × 80 only estimates 93.3.
+	workout := `{"workout_id":1,"date":"2026-09-28T10:00:00Z","exercises":[{"name":"bench","sets":[{"reps":1,"working_weight":100},{"reps":5,"working_weight":80}]}]}`
+	if rec := send(r, http.MethodPost, "/workouts", token, workout); rec.Code != http.StatusCreated {
+		t.Fatalf("save: status %d, want 201; body %s", rec.Code, rec.Body)
+	}
+
+	rec := send(r, http.MethodGet, "/workouts/pr?exercise=bench", token, "")
+	want := `{"one_rep_max":100,"weight":100,"volume":400}`
+	if rec.Code != http.StatusOK || rec.Body.String() != want {
+		t.Fatalf("got %d %s, want 200 %s", rec.Code, rec.Body, want)
+	}
+}
+
+func TestReadsReturn404ForAnExerciseNeverLogged(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := newRouter(store.NewStorage(), testSecret)
+	token := tokenFor(t, "user-a")
+
+	workout := `{"workout_id":1,"date":"2026-09-28T10:00:00Z","exercises":[{"name":"bench","sets":[{"reps":5,"working_weight":100}]}]}`
+	if rec := send(r, http.MethodPost, "/workouts", token, workout); rec.Code != http.StatusCreated {
+		t.Fatalf("save: status %d, want 201; body %s", rec.Code, rec.Body)
+	}
+
+	for _, url := range []string{"/workouts/pr?exercise=squat", "/workouts/volume?exercise=squat"} {
+		if rec := send(r, http.MethodGet, url, token, ""); rec.Code != http.StatusNotFound {
+			t.Errorf("GET %s: status %d, want 404; body %s", url, rec.Code, rec.Body)
+		}
+	}
+}

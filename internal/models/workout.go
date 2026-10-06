@@ -22,7 +22,7 @@ type Workout struct {
 }
 
 type PR struct {
-	OneRepMax float64
-	Weight    float64
-	Volume    float64
+	OneRepMax float64 `json:"one_rep_max"`
+	Weight    float64 `json:"weight"`
+	Volume    float64 `json:"volume"`
 }

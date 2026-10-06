@@ -29,17 +29,21 @@ func CalculateWeeklyVolume(exercise string, workouts []models.Workout) map[strin
 	return volumeTracker
 }
 
-// CalculateExercisePRs a function to return every type of PR of the given exercise
-func CalculateExercisePRs(exercise string, workouts []models.Workout) *models.PR {
+// CalculateExercisePRs a function to return every type of PR of the given exercise.
+// The bool is false when the exercise was never logged. It can't be inferred from the
+// PR values, because bodyweight sets legitimately give all-zero PRs.
+func CalculateExercisePRs(exercise string, workouts []models.Workout) (models.PR, bool) {
 	var PrVolume float64
 	var PrOneRepMax float64
 	var PrWeight float64
+	found := false
 	for _, workout := range workouts {
 		for _, e := range workout.Exercises {
 			if e.Name == exercise {
 				for _, set := range e.Sets {
+					found = true
 					volume := float64(set.Reps) * set.WorkingWeight
-					oneRepMax := set.WorkingWeight * (1.0 + float64(set.Reps)/30.0)
+					oneRepMax := estimateOneRepMax(set.WorkingWeight, set.Reps)
 					weight := set.WorkingWeight
 
 					PrVolume = max(PrVolume, volume)
@@ -49,9 +53,18 @@ func CalculateExercisePRs(exercise string, workouts []models.Workout) *models.PR
 			}
 		}
 	}
-	return &models.PR{
+	return models.PR{
 		OneRepMax: PrOneRepMax,
 		Weight:    PrWeight,
 		Volume:    PrVolume,
+	}, found
+}
+
+// estimateOneRepMax uses the Epley formula, weight × (1 + reps/30). A single rep already
+// is a one-rep max, so it's returned as is; Epley would overstate it by 3.3%.
+func estimateOneRepMax(weight float64, reps int) float64 {
+	if reps == 1 {
+		return weight
 	}
+	return weight * (1.0 + float64(reps)/30.0)
 }
