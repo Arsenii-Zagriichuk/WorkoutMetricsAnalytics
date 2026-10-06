@@ -11,6 +11,8 @@ cp .env.example .env    # then set JWT_SECRET, e.g. from: openssl rand -base64 3
 go run ./cmd/api        # listens on :8080
 ```
 
+Without a `.env` file, the server reads `JWT_SECRET` from the environment.
+
 ## Get a token
 
 There is no sign-up. The API accepts any HS256 token signed with `JWT_SECRET` that has issuer `workout-metrics-analytics`, an expiry, and a `sub` claim holding the user id. `devtoken` mints one:
@@ -43,6 +45,8 @@ curl -X POST localhost:8080/workouts \
 # 201 {"message":"workout saved successfully","session_id":2}
 ```
 
+A workout needs a `date` and at least one exercise. Each exercise needs a `name` and at least one set, and each set needs `reps` of at least 1 and a `working_weight` of at least 0. Anything else gets a 400 and isn't saved.
+
 ### Weekly volume
 
 ```bash
@@ -67,7 +71,7 @@ Errors come back as `{"error": "<message>"}`.
 
 | Status | When                                                                                         |
 | ------ | -------------------------------------------------------------------------------------------- |
-| 400    | The body doesn't decode into a workout, or the `exercise` parameter is missing               |
+| 400    | The body isn't a valid workout (see Save workouts), or the `exercise` parameter is missing   |
 | 401    | The token is missing, malformed, expired or wrongly signed (with `WWW-Authenticate: Bearer`) |
 | 404    | The caller has no workouts yet                                                               |
 
@@ -79,7 +83,7 @@ go test -race ./...
 
 - `internal/store`: 50 goroutines save and read one user's workouts at the same time, and every save must land.
 - `internal/middleware`: `VerifyToken` rejects expired tokens, the wrong secret, HS512, a missing `sub` and the wrong issuer.
-- `cmd/api`: through the real router, user B can't read user A's workouts on any read route.
+- `cmd/api`: through the real router, user B can't read user A's workouts on any read route, and invalid workouts get a 400 and aren't saved.
 
 CI (`.github/workflows/action.yml`) runs `go vet`, a `gofmt` check and the tests with the race detector.
 
