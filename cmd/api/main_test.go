@@ -70,3 +70,32 @@ func TestUserBCannotReadUserAWorkouts(t *testing.T) {
 		})
 	}
 }
+
+func TestSaveWorkoutRejectsInvalidWorkouts(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := newRouter(store.NewStorage(), testSecret)
+	token := tokenFor(t, "user-a")
+
+	tests := []struct{ name, body string }{
+		{"no date", `{"exercises":[{"name":"bench","sets":[{"reps":5,"working_weight":100}]}]}`},
+		{"no exercises", `{"date":"2026-09-28T10:00:00Z"}`},
+		{"empty exercises", `{"date":"2026-09-28T10:00:00Z","exercises":[]}`},
+		{"exercise without a name", `{"date":"2026-09-28T10:00:00Z","exercises":[{"sets":[{"reps":5,"working_weight":100}]}]}`},
+		{"exercise without sets", `{"date":"2026-09-28T10:00:00Z","exercises":[{"name":"bench","sets":[]}]}`},
+		{"zero reps", `{"date":"2026-09-28T10:00:00Z","exercises":[{"name":"bench","sets":[{"reps":0,"working_weight":100}]}]}`},
+		{"negative weight", `{"date":"2026-09-28T10:00:00Z","exercises":[{"name":"bench","sets":[{"reps":5,"working_weight":-100}]}]}`},
+		{"bad set in a later exercise", `{"date":"2026-09-28T10:00:00Z","exercises":[{"name":"bench","sets":[{"reps":5,"working_weight":100}]},{"name":"squat","sets":[{"reps":-1,"working_weight":120}]}]}`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if rec := send(r, http.MethodPost, "/workouts", token, tc.body); rec.Code != http.StatusBadRequest {
+				t.Fatalf("status %d, want 400; body %s", rec.Code, rec.Body)
+			}
+		})
+	}
+
+	// A 400 must also mean nothing was saved.
+	if rec := send(r, http.MethodGet, "/workouts/volume?exercise=bench", token, ""); rec.Code != http.StatusNotFound {
+		t.Fatalf("after only invalid saves: status %d, want 404; body %s", rec.Code, rec.Body)
+	}
+}
