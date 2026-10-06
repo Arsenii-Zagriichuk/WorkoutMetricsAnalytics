@@ -4,6 +4,7 @@ import (
 	"WorkoutMetricsAnalytics/internal/handlers"
 	"WorkoutMetricsAnalytics/internal/middleware"
 	"WorkoutMetricsAnalytics/internal/store"
+	"errors"
 	"log"
 	"os"
 
@@ -12,9 +13,9 @@ import (
 )
 
 func main() {
-	err1 := godotenv.Load()
-	if err1 != nil {
-		return
+	// A missing .env is fine: JWT_SECRET may come from the environment instead.
+	if err := godotenv.Load(); err != nil && !errors.Is(err, os.ErrNotExist) {
+		log.Fatalf("loading .env: %v", err)
 	}
 	secret := []byte(os.Getenv("JWT_SECRET"))
 	if len(secret) < 32 {
@@ -23,9 +24,9 @@ func main() {
 
 	r := newRouter(store.NewStorage(), secret)
 
-	err2 := r.Run(":8080")
-	if err2 != nil {
-		return
+	// Run only returns on failure, e.g. when the port is already in use.
+	if err := r.Run(":8080"); err != nil {
+		log.Fatalf("server stopped: %v", err)
 	}
 }
 
