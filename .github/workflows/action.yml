@@ -1,4 +1,4 @@
-name: actions
+name: workflows
 
 on:
   pull_request:
@@ -15,10 +15,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: stable
-
-      - name: Run tests with race detector
-        run: go test -race ./...
+          go-version: go.mod
 
       - name: Run go vet
         run: go vet ./...
@@ -30,3 +27,5 @@ jobs:
             gofmt -l .
             exit 1
           fi
+      - name: Run tests with race detector
+        run: go test -race ./...
