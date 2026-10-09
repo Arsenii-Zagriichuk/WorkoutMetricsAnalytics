@@ -32,7 +32,7 @@ func main() {
 
 // newRouter registers the middleware and routes. main and the tests both use it,
 // so the tests cover exactly the routes the server serves.
-func newRouter(db *store.Storage, secret []byte) *gin.Engine {
+func newRouter(db store.Store, secret []byte) *gin.Engine {
 	r := gin.Default()
 	workoutHandler := &handlers.WorkoutHandler{Store: db}
 

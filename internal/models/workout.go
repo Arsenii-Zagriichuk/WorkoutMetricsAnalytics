@@ -16,7 +16,7 @@ type Exercise struct {
 }
 
 type Workout struct {
-	WorkoutID int        `json:"workout_id"`
+	WorkoutID int        `json:"workout_id" binding:"gte=1"`
 	Date      time.Time  `json:"date" binding:"required"`
 	Exercises []Exercise `json:"exercises" binding:"required,min=1,dive"`
 }

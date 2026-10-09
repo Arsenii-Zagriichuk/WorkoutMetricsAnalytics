@@ -45,7 +45,7 @@ curl -X POST localhost:8080/workouts \
 # 201 {"message":"workout saved successfully","session_id":2}
 ```
 
-A workout needs a `date` and at least one exercise. Each exercise needs a `name` and at least one set, and each set needs `reps` of at least 1 and a `working_weight` of at least 0. Anything else gets a 400 and isn't saved.
+A workout needs a `workout_id` of at least 1 that the user hasn't used before, a `date`, and at least one exercise. Each exercise needs a `name` and at least one set, and each set needs `reps` of at least 1 and a `working_weight` of at least 0. Anything else gets a 400 and isn't saved.
 
 ### Weekly volume
 
@@ -76,6 +76,8 @@ Errors come back as `{"error": "<message>"}`.
 | 400    | The body isn't a valid workout (see Save workouts), or the `exercise` parameter is missing   |
 | 401    | The token is missing, malformed, expired or wrongly signed (with `WWW-Authenticate: Bearer`) |
 | 404    | The caller has never logged that exercise                                                    |
+| 409    | The caller already saved a workout with that `workout_id`; the new one isn't saved           |
+| 500    | Something failed on the server; the details are logged, not sent                             |
 
 ## Tests
 
@@ -83,21 +85,23 @@ Errors come back as `{"error": "<message>"}`.
 go test -race ./...
 ```
 
-- `internal/store`: 50 goroutines save and read one user's workouts at the same time, and every save must land.
+- `internal/store`: 50 goroutines save and read one user's workouts at the same time, and every save must land; 50 goroutines saving the same `workout_id` at once store it exactly once.
 - `internal/middleware`: `VerifyToken` rejects expired tokens, the wrong secret, HS512, a missing `sub` and the wrong issuer.
 - `internal/services`: the one-rep-max estimate, and a bodyweight exercise with all-zero PRs still counting as logged.
-- `cmd/api`: through the real router, user B can't read user A's workouts on any read route, invalid workouts get a 400 and aren't saved, the PR response has the documented shape, and an exercise that was never logged gets a 404 from both read routes.
+- `cmd/api`: through the real router, user B can't read user A's workouts on any read route, invalid workouts get a 400 and aren't saved, the PR response has the documented shape, an exercise that was never logged gets a 404 from both read routes and a missing `exercise` a 400, and a repeated `workout_id` gets a 409 without being counted.
 
 CI (`.github/workflows/action.yml`) runs `go vet`, a `gofmt` check and the tests with the race detector.
 
 ### The data race the mutex fixes
 
-The store was a bare map before commit `8fd8eb3`. On a clean checkout, this runs the concurrent test against that version and then restores the file:
+The store was a bare map before commit `8fd8eb3`. The concurrent test arrived in `d42d7f3`, before the store's methods took a context, so the demo runs there. On a clean checkout, this runs that test against the bare-map store and then comes back:
 
 ```bash
+git switch --detach d42d7f3
 git show 8fd8eb3~1:internal/store/memory.go > internal/store/memory.go
 go test -race ./internal/store
 git checkout internal/store/memory.go
+git switch -
 ```
 
 In one run the race detector reported 7 data races, and only 29 of the 50 saves survived. There were two kinds of race: `GetWorkouts` reading the map while `SaveWorkout` wrote it, and two `SaveWorkout` calls appending to the same slice at once, which is how saves get lost. The first report:

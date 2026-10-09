@@ -5,13 +5,15 @@ import (
 	"WorkoutMetricsAnalytics/internal/models"
 	"WorkoutMetricsAnalytics/internal/services"
 	"WorkoutMetricsAnalytics/internal/store"
+	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 type WorkoutHandler struct {
-	Store *store.Storage
+	Store store.Store
 }
 
 // SaveWorkout is handler function for the POST request.
@@ -20,15 +22,22 @@ func (h *WorkoutHandler) SaveWorkout(c *gin.Context) {
 	userID := store.UserID(middleware.UserID(c))
 
 	var workout models.Workout
-
-	err := c.ShouldBindBodyWithJSON(&workout)
-
-	if err != nil {
+	if err := c.ShouldBindBodyWithJSON(&workout); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	h.Store.SaveWorkout(userID, workout)
+	err := h.Store.SaveWorkout(c.Request.Context(), userID, workout)
+	if errors.Is(err, store.ErrDuplicateWorkout) {
+		c.JSON(http.StatusConflict, gin.H{"error": "a workout with this workout_id already exists"})
+		return
+	}
+
+	if err != nil {
+		slog.Error("saving workout", "user_id", userID, "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message":    "workout saved successfully",
@@ -46,7 +55,14 @@ func (h *WorkoutHandler) GetVolume(c *gin.Context) {
 		return
 	}
 
-	volumeStats := services.CalculateWeeklyVolume(exercise, h.Store.GetWorkouts(userID))
+	workouts, err := h.Store.GetWorkouts(c.Request.Context(), userID)
+	if err != nil {
+		slog.Error("reading workouts", "user_id", userID, "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	volumeStats := services.CalculateWeeklyVolume(exercise, workouts)
 	if len(volumeStats) == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "no workouts found for this exercise"})
 		return
@@ -64,7 +80,14 @@ func (h *WorkoutHandler) GetExercisePrs(c *gin.Context) {
 		return
 	}
 
-	prStats, found := services.CalculateExercisePRs(exercise, h.Store.GetWorkouts(userID))
+	workouts, err := h.Store.GetWorkouts(c.Request.Context(), userID)
+	if err != nil {
+		slog.Error("reading workouts", "user_id", userID, "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	prStats, found := services.CalculateExercisePRs(exercise, workouts)
 	if !found {
 		c.JSON(http.StatusNotFound, gin.H{"error": "no workouts found for this exercise"})
 		return

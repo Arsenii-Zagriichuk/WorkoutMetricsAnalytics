@@ -77,14 +77,15 @@ func TestSaveWorkoutRejectsInvalidWorkouts(t *testing.T) {
 	token := tokenFor(t, "user-a")
 
 	tests := []struct{ name, body string }{
-		{"no date", `{"exercises":[{"name":"bench","sets":[{"reps":5,"working_weight":100}]}]}`},
-		{"no exercises", `{"date":"2026-09-28T10:00:00Z"}`},
-		{"empty exercises", `{"date":"2026-09-28T10:00:00Z","exercises":[]}`},
-		{"exercise without a name", `{"date":"2026-09-28T10:00:00Z","exercises":[{"sets":[{"reps":5,"working_weight":100}]}]}`},
-		{"exercise without sets", `{"date":"2026-09-28T10:00:00Z","exercises":[{"name":"bench","sets":[]}]}`},
-		{"zero reps", `{"date":"2026-09-28T10:00:00Z","exercises":[{"name":"bench","sets":[{"reps":0,"working_weight":100}]}]}`},
-		{"negative weight", `{"date":"2026-09-28T10:00:00Z","exercises":[{"name":"bench","sets":[{"reps":5,"working_weight":-100}]}]}`},
-		{"bad set in a later exercise", `{"date":"2026-09-28T10:00:00Z","exercises":[{"name":"bench","sets":[{"reps":5,"working_weight":100}]},{"name":"squat","sets":[{"reps":-1,"working_weight":120}]}]}`},
+		{"no workout_id", `{"date":"2026-09-28T10:00:00Z","exercises":[{"name":"bench","sets":[{"reps":5,"working_weight":100}]}]}`},
+		{"no date", `{"workout_id":1,"exercises":[{"name":"bench","sets":[{"reps":5,"working_weight":100}]}]}`},
+		{"no exercises", `{"workout_id":1,"date":"2026-09-28T10:00:00Z"}`},
+		{"empty exercises", `{"workout_id":1,"date":"2026-09-28T10:00:00Z","exercises":[]}`},
+		{"exercise without a name", `{"workout_id":1,"date":"2026-09-28T10:00:00Z","exercises":[{"sets":[{"reps":5,"working_weight":100}]}]}`},
+		{"exercise without sets", `{"workout_id":1,"date":"2026-09-28T10:00:00Z","exercises":[{"name":"bench","sets":[]}]}`},
+		{"zero reps", `{"workout_id":1,"date":"2026-09-28T10:00:00Z","exercises":[{"name":"bench","sets":[{"reps":0,"working_weight":100}]}]}`},
+		{"negative weight", `{"workout_id":1,"date":"2026-09-28T10:00:00Z","exercises":[{"name":"bench","sets":[{"reps":5,"working_weight":-100}]}]}`},
+		{"bad set in a later exercise", `{"workout_id":1,"date":"2026-09-28T10:00:00Z","exercises":[{"name":"bench","sets":[{"reps":5,"working_weight":100}]},{"name":"squat","sets":[{"reps":-1,"working_weight":120}]}]}`},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -134,5 +135,45 @@ func TestReadsReturn404ForAnExerciseNeverLogged(t *testing.T) {
 		if rec := send(r, http.MethodGet, url, token, ""); rec.Code != http.StatusNotFound {
 			t.Errorf("GET %s: status %d, want 404; body %s", url, rec.Code, rec.Body)
 		}
+	}
+}
+
+func TestReadsRequireAnExercise(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := newRouter(store.NewStorage(), testSecret)
+	token := tokenFor(t, "user-a")
+
+	for _, url := range []string{"/workouts/pr", "/workouts/volume"} {
+		if rec := send(r, http.MethodGet, url, token, ""); rec.Code != http.StatusBadRequest {
+			t.Errorf("GET %s: status %d, want 400; body %s", url, rec.Code, rec.Body)
+		}
+	}
+}
+
+func TestSaveWorkoutRejectsARepeatedWorkoutID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := newRouter(store.NewStorage(), testSecret)
+	tokenA := tokenFor(t, "user-a")
+	tokenB := tokenFor(t, "user-b")
+
+	first := `{"workout_id":1,"date":"2026-09-28T10:00:00Z","exercises":[{"name":"bench","sets":[{"reps":5,"working_weight":100}]}]}`
+	// Same workout_id, different contents: a retried or mistaken request.
+	repeat := `{"workout_id":1,"date":"2026-09-29T10:00:00Z","exercises":[{"name":"bench","sets":[{"reps":5,"working_weight":200}]}]}`
+
+	if rec := send(r, http.MethodPost, "/workouts", tokenA, first); rec.Code != http.StatusCreated {
+		t.Fatalf("A first save: status %d, want 201; body %s", rec.Code, rec.Body)
+	}
+	if rec := send(r, http.MethodPost, "/workouts", tokenA, repeat); rec.Code != http.StatusConflict {
+		t.Fatalf("A repeat save: status %d, want 409; body %s", rec.Code, rec.Body)
+	}
+	// workout_id only has to be unique per user.
+	if rec := send(r, http.MethodPost, "/workouts", tokenB, first); rec.Code != http.StatusCreated {
+		t.Fatalf("B save with A's workout_id: status %d, want 201; body %s", rec.Code, rec.Body)
+	}
+
+	// The rejected repeat must not have been counted: A's volume is the first workout's alone.
+	rec := send(r, http.MethodGet, "/workouts/volume?exercise=bench", tokenA, "")
+	if want := `{"2026-W40":500}`; rec.Code != http.StatusOK || rec.Body.String() != want {
+		t.Fatalf("A volume: got %d %s, want 200 %s", rec.Code, rec.Body, want)
 	}
 }
