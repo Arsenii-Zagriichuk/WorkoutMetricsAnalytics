@@ -1,0 +1,153 @@
+syntax = "proto3";
+
+option go_package = "WorkoutMetricsAnalytics/gen/levl/coach/v1;coachv1";
+
+import "google/protobuf/timestamp.proto";
+
+enum WorkoutSource{
+    WORKOUT_SOURCE_UNSPECIFIED = 0;
+    NATIVE = 1;
+    IMPORTED = 2;
+}
+
+enum SetType{
+    SET_TYPE_UNSPECIFIED = 0;
+    NORMAL = 1;
+    WARMUP = 2;
+    DROP = 3;
+    FAILURE = 4;
+}
+
+enum ExperienceLevel{
+    EXPERIENCE_LEVEL_UNSPECIFIED = 0;
+    BEGINNER = 1;
+    INTERMEDIATE = 2;
+    ADVANCED = 3;
+}
+
+enum FitnessGoal{
+    FITNESS_GOAL_UNSPECIFIED = 0;
+    LOSE_FAT = 1;
+    MAINTAIN = 2;
+    BUILD_MUSCLE = 3;
+}
+
+enum WeightUnit{
+    WEIGHT_UNIT_UNSPECIFIED = 0;
+    KG = 1;
+    LBS = 2;
+}
+
+message Event {
+  string event_id = 1;                         // UUID from Levl's outbox
+  string user_id = 2;                          // Levl User.id
+  int64 sequence = 3;                          // per user, only goes up
+  google.protobuf.Timestamp occurred_at = 4;   // when Levl committed the change
+  oneof payload {
+    WorkoutUpserted workout_upserted = 10;
+    WorkoutDeleted workout_deleted = 11;
+    RoutineUpserted routine_upserted = 12;
+    ProfileUpdated profile_updated = 13;
+    BodyWeightRecorded body_weight_recorded = 14;
+    BodyWeightRemoved body_weight_removed = 15;
+    NutritionDayUpdated nutrition_day_updated = 16;
+    UserDeleted user_deleted = 17;
+  }
+}
+
+message WorkoutUpserted{
+  Workout workout = 1;
+}
+
+message Workout{
+  string workout_id = 1;
+  optional string routine_id = 2;
+  google.protobuf.Timestamp started_at = 3;
+  google.protobuf.Timestamp completed_at = 4;
+  WorkoutSource source = 5;
+  repeated PlannedExercise planned = 6;
+  repeated PerformedExercise exercises = 7;
+}
+
+message PlannedExercise{
+  string exercise_id = 1;
+  int32 order = 2;
+  int32 target_sets = 3;
+}
+
+message PerformedExercise{
+  string exercise_id = 1;
+  int32 order = 2;
+  optional int32 planned_order = 3;
+  repeated WorkoutSet sets = 4;
+}
+
+message WorkoutSet{
+  int32 set_number = 1;
+  SetType type = 2;
+  optional double weight_kg = 3;
+  optional int32 reps = 4;
+  optional double rpe = 5;
+}
+
+message WorkoutDeleted{
+  string workout_id = 1;
+}
+
+message RoutineUpserted{
+  Routine routine = 1;
+}
+
+message Routine{
+  string routine_id = 1;
+  bool archived = 2;
+  repeated RoutineExercise exercises = 3;
+}
+
+message RepRange {
+  int32 min = 1;
+  int32 max = 2;
+}
+
+message RoutineExercise{
+  string exercise_id = 1;
+  int32 order = 2;
+  int32 target_sets = 3;
+  oneof rep_target{
+    int32 exact_reps = 4;
+    RepRange rep_range = 5;
+  }
+}
+
+message ProfileUpdated{
+  Profile profile = 1;
+}
+
+message Profile{
+  ExperienceLevel experience = 1;
+  FitnessGoal goal = 2;
+  optional int32 weekly_workout_target = 3;
+  string timezone = 4;
+  WeightUnit weight_unit = 5;
+}
+
+message BodyWeightRecorded{
+  string date = 1;
+  double weight_kg = 2;
+}
+
+message BodyWeightRemoved{
+  string date = 1;
+}
+
+message NutritionDayUpdated{
+  string date = 1;
+  double calories = 2;
+  double protein_g = 3;
+  double carbs_g = 4;
+  double fat_g = 5;
+}
+
+message UserDeleted{
+
+}
