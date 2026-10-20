@@ -1,48 +1,48 @@
 syntax = "proto3";
 
-option go_package = "WorkoutMetricsAnalytics/gen/levl/coach/v1;coachv1";
-
 import "google/protobuf/timestamp.proto";
 
-enum WorkoutSource{
-    WORKOUT_SOURCE_UNSPECIFIED = 0;
-    NATIVE = 1;
-    IMPORTED = 2;
+option go_package = "WorkoutMetricsAnalytics/gen/levl/coach/v1;coachv1";
+
+enum WorkoutSource {
+  WORKOUT_SOURCE_UNSPECIFIED = 0;
+  NATIVE = 1;
+  IMPORTED = 2;
 }
 
-enum SetType{
-    SET_TYPE_UNSPECIFIED = 0;
-    NORMAL = 1;
-    WARMUP = 2;
-    DROP = 3;
-    FAILURE = 4;
+enum SetType {
+  SET_TYPE_UNSPECIFIED = 0;
+  NORMAL = 1;
+  WARMUP = 2;
+  DROP = 3;
+  FAILURE = 4;
 }
 
-enum ExperienceLevel{
-    EXPERIENCE_LEVEL_UNSPECIFIED = 0;
-    BEGINNER = 1;
-    INTERMEDIATE = 2;
-    ADVANCED = 3;
+enum ExperienceLevel {
+  EXPERIENCE_LEVEL_UNSPECIFIED = 0;
+  BEGINNER = 1;
+  INTERMEDIATE = 2;
+  ADVANCED = 3;
 }
 
-enum FitnessGoal{
-    FITNESS_GOAL_UNSPECIFIED = 0;
-    LOSE_FAT = 1;
-    MAINTAIN = 2;
-    BUILD_MUSCLE = 3;
+enum FitnessGoal {
+  FITNESS_GOAL_UNSPECIFIED = 0;
+  LOSE_FAT = 1;
+  MAINTAIN = 2;
+  BUILD_MUSCLE = 3;
 }
 
-enum WeightUnit{
-    WEIGHT_UNIT_UNSPECIFIED = 0;
-    KG = 1;
-    LBS = 2;
+enum WeightUnit {
+  WEIGHT_UNIT_UNSPECIFIED = 0;
+  KG = 1;
+  LBS = 2;
 }
 
 message Event {
-  string event_id = 1;                         // UUID from Levl's outbox
-  string user_id = 2;                          // Levl User.id
-  int64 sequence = 3;                          // per user, only goes up
-  google.protobuf.Timestamp occurred_at = 4;   // when Levl committed the change
+  string event_id = 1; // UUID from Levl's outbox
+  string user_id = 2; // Levl User.id
+  int64 sequence = 3; // per user, only goes up
+  google.protobuf.Timestamp occurred_at = 4; // when Levl committed the change
   oneof payload {
     WorkoutUpserted workout_upserted = 10;
     WorkoutDeleted workout_deleted = 11;
@@ -55,11 +55,11 @@ message Event {
   }
 }
 
-message WorkoutUpserted{
+message WorkoutUpserted {
   Workout workout = 1;
 }
 
-message Workout{
+message Workout {
   string workout_id = 1;
   optional string routine_id = 2;
   google.protobuf.Timestamp started_at = 3;
@@ -69,20 +69,20 @@ message Workout{
   repeated PerformedExercise exercises = 7;
 }
 
-message PlannedExercise{
+message PlannedExercise {
   string exercise_id = 1;
   int32 order = 2;
   int32 target_sets = 3;
 }
 
-message PerformedExercise{
+message PerformedExercise {
   string exercise_id = 1;
   int32 order = 2;
   optional int32 planned_order = 3;
   repeated WorkoutSet sets = 4;
 }
 
-message WorkoutSet{
+message WorkoutSet {
   int32 set_number = 1;
   SetType type = 2;
   optional double weight_kg = 3;
@@ -90,15 +90,15 @@ message WorkoutSet{
   optional double rpe = 5;
 }
 
-message WorkoutDeleted{
+message WorkoutDeleted {
   string workout_id = 1;
 }
 
-message RoutineUpserted{
+message RoutineUpserted {
   Routine routine = 1;
 }
 
-message Routine{
+message Routine {
   string routine_id = 1;
   bool archived = 2;
   repeated RoutineExercise exercises = 3;
@@ -109,21 +109,21 @@ message RepRange {
   int32 max = 2;
 }
 
-message RoutineExercise{
+message RoutineExercise {
   string exercise_id = 1;
   int32 order = 2;
   int32 target_sets = 3;
-  oneof rep_target{
+  oneof rep_target {
     int32 exact_reps = 4;
     RepRange rep_range = 5;
   }
 }
 
-message ProfileUpdated{
+message ProfileUpdated {
   Profile profile = 1;
 }
 
-message Profile{
+message Profile {
   ExperienceLevel experience = 1;
   FitnessGoal goal = 2;
   optional int32 weekly_workout_target = 3;
@@ -131,16 +131,16 @@ message Profile{
   WeightUnit weight_unit = 5;
 }
 
-message BodyWeightRecorded{
+message BodyWeightRecorded {
   string date = 1;
   double weight_kg = 2;
 }
 
-message BodyWeightRemoved{
+message BodyWeightRemoved {
   string date = 1;
 }
 
-message NutritionDayUpdated{
+message NutritionDayUpdated {
   string date = 1;
   double calories = 2;
   double protein_g = 3;
@@ -148,6 +148,4 @@ message NutritionDayUpdated{
   double fat_g = 5;
 }
 
-message UserDeleted{
-
-}
+message UserDeleted {}
