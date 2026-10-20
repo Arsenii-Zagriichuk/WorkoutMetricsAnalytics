@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package levl.coach.v1;
+
 import "google/protobuf/timestamp.proto";
 
 option go_package = "WorkoutMetricsAnalytics/gen/levl/coach/v1;coachv1";

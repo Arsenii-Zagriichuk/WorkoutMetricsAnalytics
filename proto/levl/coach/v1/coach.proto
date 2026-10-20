@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package levl.coach.v1;
+
+import "google/protobuf/timestamp.proto";
+import "levl/coach/v1/events.proto";
+
+option go_package = "WorkoutMetricsAnalytics/gen/levl/coach/v1;coachv1";
+
+service CoachService {
+  rpc IngestEvents(IngestEventsRequest) returns (IngestEventsResponse);
+  rpc GetPrescriptions(GetPrescriptionsRequest) returns (GetPrescriptionsResponse);
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+}
+
+message IngestEventsRequest {
+  repeated Event events = 1;
+}
+
+message IngestEventsResponse {
+  repeated EventResult results = 1;
+}
+
+enum IngestStatus {
+  INGEST_STATUS_UNSPECIFIED = 0;
+  APPLIED = 1;
+  DUPLICATE = 2;
+  SUPERSEDED = 3;
+  REJECTED = 4;
+}
+
+message EventResult {
+  string event_id = 1;
+  IngestStatus status = 2;
+  string reason = 3;
+}
+
+message GetPrescriptionsRequest {
+  string user_id = 1;
+}
+
+message GetPrescriptionsResponse {
+  int64 based_on_sequence = 1;
+  repeated RoutinePrescription routines = 2;
+}
+
+message RoutinePrescription {
+  string routine_id = 1;
+  repeated ExercisePrescription exercises = 2;
+}
+
+enum PrescriptionReason {
+  PRESCRIPTION_REASON_UNSPECIFIED = 0;
+  ADD_LOAD = 1;
+  ADD_REPS = 2;
+  HOLD = 3;
+  REDUCE = 4;
+  NO_HISTORY = 5;
+}
+
+message ExercisePrescription {
+  string exercise_id = 1;
+  int32 order = 2;
+  int32 sets = 3;
+  int32 reps = 4;
+  Load load = 5;
+  PrescriptionReason reason = 6;
+}
+
+message Load {
+  double value = 1;
+  WeightUnit unit = 2;
+}
+
+message DeleteUserRequest {
+  string user_id = 1;
+}
+
+message DeleteUserResponse {
+  bool found = 1;
+  google.protobuf.Timestamp erased_at = 2;
+}
